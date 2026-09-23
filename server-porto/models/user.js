@@ -7,6 +7,7 @@ export default (sequelize, DataTypes) => {
             User.hasMany(models.Experiences, { foreignKey: 'userId', as: 'experiences' });
             User.hasMany(models.Summary, { foreignKey: 'userId', as: 'summaries' });
             User.hasMany(models.Skill, { foreignKey: 'userId', as: 'skills' });
+            User.hasMany(models.Certification, { foreignKey: 'userId', as: 'certifications' });
         }
     }
     User.init({
@@ -19,7 +20,8 @@ export default (sequelize, DataTypes) => {
             }
         },
         password: { type: DataTypes.STRING, allowNull: false },
-        name: { type: DataTypes.STRING, allowNull: false }
+        name: { type: DataTypes.STRING, allowNull: false },
+        role: { type: DataTypes.STRING, allowNull: false, defaultValue: 'user' }
     }, {
         sequelize,
         modelName: 'User'

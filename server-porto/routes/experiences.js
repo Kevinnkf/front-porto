@@ -1,13 +1,13 @@
 import express from 'express';
 
 import { getAllExperiences, addExperience, editExperience, deleteExperience } from '../controller/experiences.js';
-import { verifyToken } from '../middleware/auth.js';
+import { verifyToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', getAllExperiences);
-router.post('/create', verifyToken, addExperience);
-router.delete('/delete/:id', verifyToken, deleteExperience);
-router.put('/update/:id', verifyToken, editExperience);
+router.post('/create', verifyToken, requireAdmin, addExperience);
+router.delete('/delete/:id', verifyToken, requireAdmin, deleteExperience);
+router.put('/update/:id', verifyToken, requireAdmin, editExperience);
 
 export default router;
