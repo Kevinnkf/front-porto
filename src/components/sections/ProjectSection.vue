@@ -6,6 +6,7 @@
       <h2 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Projects</h2>
       <button
         v-if="currentUser"
+        @click="openCreate"
         class="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
       >
         + Add Project
@@ -31,8 +32,9 @@
         <div class="flex items-start justify-between mb-3">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ project.name }}</h3>
           <div class="flex items-center gap-2">
-            <template v-if="currentUser && currentUser.id === project.userId">
+            <template v-if="canManage(project)">
               <button
+                @click="openEdit(project)"
                 class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded hover:bg-blue-600 hover:border-blue-600 hover:text-white dark:hover:bg-blue-500 dark:hover:border-blue-500 transition-all duration-200"
               >Edit</button>
               <button
@@ -62,20 +64,44 @@
         </div>
       </div>
     </div>
+
+    <RecordEditorModal
+      :open="editorOpen"
+      :title="editingRecord ? 'Edit project' : 'Add project'"
+      :fields="fields"
+      :initial-value="editingRecord || emptyRecord"
+      :saving="saving"
+      :error="editorError"
+      @save="saveProject"
+      @cancel="closeEditor"
+    />
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
 import { projectsAPI } from '@/services/api'
+import RecordEditorModal from '@/components/RecordEditorModal.vue'
 
 export default {
   name: 'ProjectsSection',
+  components: { RecordEditorModal },
   props: { currentUser: Object },
-  setup() {
+  setup(props) {
     const projects = ref([])
     const loading = ref(false)
     const error = ref(null)
+    const editorOpen = ref(false)
+    const editingRecord = ref(null)
+    const saving = ref(false)
+    const editorError = ref('')
+    const emptyRecord = { name: '', description: '', url: '', imageUrl: '' }
+    const fields = [
+      { key: 'name', label: 'Project name' },
+      { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'url', label: 'Link', type: 'url', required: false },
+      { key: 'imageUrl', label: 'Image URL', type: 'url', required: false }
+    ]
 
     const loadProjects = async () => {
       loading.value = true
@@ -92,19 +118,66 @@ export default {
     }
 
     const deleteProject = async (id) => {
-      if (!confirm('Are you sure you want to delete this project?')) return
+      if (!window.confirm('Warning: this will permanently delete this project. Continue?')) return
       try {
         await projectsAPI.delete(id)
-        projects.value = projects.value.filter(proj => proj.id !== id)
+        projects.value = projects.value.filter(proj => String(proj.id) !== String(id))
       } catch (err) {
         console.error('Failed to delete project', err)
-        alert('Failed to delete project')
+        window.alert(err.response?.data?.message || 'Failed to delete project')
+      }
+    }
+
+    const canManage = (project) => {
+      const userId = props.currentUser?.id ?? props.currentUser?.userId ?? props.currentUser?.user_id
+      const ownerId = project.userId ?? project.user_id ?? project.ownerId
+      return userId != null && ownerId != null && String(userId) === String(ownerId)
+    }
+
+    const openCreate = () => {
+      editingRecord.value = null
+      editorError.value = ''
+      editorOpen.value = true
+    }
+
+    const openEdit = (project) => {
+      editingRecord.value = { ...project }
+      editorError.value = ''
+      editorOpen.value = true
+    }
+
+    const closeEditor = () => {
+      if (saving.value) return
+      editorOpen.value = false
+      editingRecord.value = null
+    }
+
+    const saveProject = async (form) => {
+      saving.value = true
+      editorError.value = ''
+      try {
+        if (editingRecord.value) {
+          await projectsAPI.update(editingRecord.value.id, form)
+        } else {
+          await projectsAPI.create(form)
+        }
+        await loadProjects()
+        editorOpen.value = false
+        editingRecord.value = null
+      } catch (err) {
+        editorError.value = err.response?.data?.message || 'Could not save project. Check that the API is available.'
+      } finally {
+        saving.value = false
       }
     }
 
     onMounted(loadProjects)
 
-    return { projects, loading, error, deleteProject }
+    return {
+      projects, loading, error, deleteProject, canManage,
+      editorOpen, editingRecord, saving, editorError, emptyRecord, fields,
+      openCreate, openEdit, closeEditor, saveProject
+    }
   }
 }
 </script>

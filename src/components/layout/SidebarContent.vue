@@ -7,10 +7,10 @@
       <!-- Profile Info -->
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
-          Kevin Khalfani Fadillah
+          {{ profileName || 'Portfolio' }}
         </h1>
         <h2 class="text-lg font-normal text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
-          Software Engineer
+          {{ profileProfession || 'Software Engineer' }}
           <span class="block mt-1">Building Scalable Systems</span>
         </h2>
 
@@ -23,11 +23,7 @@
           <span>Jakarta, Indonesia</span>
         </div>
 
-        <!-- Description -->
-        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed">
-          I build performant systems that elevate user experience and product scalability.
-          I'm also actively exploring how AI can power the next generation of products.
-        </p>
+        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed">{{ summary }}</p>
       </div>
 
       <!-- Navigation Links -->
@@ -58,9 +54,16 @@
 
       <!-- Auth Actions -->
       <div v-if="currentUser" class="flex items-center justify-between">
-        <span class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[60%]">
-          👤 {{ currentUser.username || currentUser.email }}
-        </span>
+        <button
+          type="button"
+          class="group flex max-w-[60%] -translate-y-0 items-center gap-2 truncate text-sm text-gray-500 transition-all duration-200 hover:-translate-y-1 hover:text-blue-600 focus-visible:-translate-y-1 focus-visible:text-blue-600 focus-visible:outline-none dark:text-gray-400 dark:hover:text-blue-400 dark:focus-visible:text-blue-400"
+          aria-label="Edit profile"
+          title="Edit profile"
+          @click="$emit('open-profile')"
+        >
+          <span aria-hidden="true" class="shrink-0">👤</span>
+          <span class="truncate">{{ currentUser.username || currentUser.email }}</span>
+        </button>
         <button
           @click="$emit('logout')"
           class="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:border-red-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-500 transition-all duration-200"
@@ -132,11 +135,14 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 export default {
   name: 'SidebarContent',
+  emits: ['toggle-dark-mode', 'open-login', 'open-profile', 'logout'],
   props: {
     darkMode: Boolean,
-    currentUser: Object
+    currentUser: Object,
+    profileName: { type: String, default: '' },
+    profileProfession: { type: String, default: '' },
+    summary: { type: String, default: '' },
   },
-  emits: ['toggle-dark-mode', 'open-login', 'logout'],
   setup() {
     const activeSection = ref('experience')
 
@@ -180,7 +186,9 @@ export default {
     onMounted(() => window.addEventListener('scroll', handleScroll))
     onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
-    return { activeSection, navLinks, linkColors, scrollToSection }
+    return {
+      activeSection, navLinks, linkColors, scrollToSection
+    }
   }
 }
 </script>

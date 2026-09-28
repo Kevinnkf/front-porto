@@ -46,4 +46,16 @@ export const skillsAPI = {
   delete: (id) => api.delete(`/skills/${id}`),
 };
 
+export const profileAPI = {
+  getProfile: () => api.get('/user'),
+};
+
+export const summaryAPI = {
+  getAll: () => api.get('/user/summaries'),
+  create: (summaryData) => api.post('/user/summary', summaryData),
+  getByUserId: (id) => api.get(`/user/${id}/summary`),
+  updateByUserId: (id, summaryData) => api.put(`/user/${id}/summary`, summaryData),
+  deleteByUserId: (id) => api.delete(`/user/${id}/summary`),
+};
+
 export default api;

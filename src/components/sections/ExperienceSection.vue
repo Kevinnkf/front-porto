@@ -6,6 +6,7 @@
       <h2 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Experiences</h2>
       <button
         v-if="currentUser"
+        @click="openCreate"
         class="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
       >
         + Add Experience
@@ -31,8 +32,9 @@
         <div class="flex items-start justify-between mb-3">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ experience.company }}</h3>
           <div class="flex items-center gap-2">
-            <template v-if="currentUser && currentUser.id === experience.userId">
+            <template v-if="canManage(experience)">
               <button
+                @click="openEdit(experience)"
                 class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded hover:bg-blue-600 hover:border-blue-600 hover:text-white dark:hover:bg-blue-500 dark:hover:border-blue-500 transition-all duration-200"
               >Edit</button>
               <button
@@ -62,20 +64,44 @@
         </div>
       </div>
     </div>
+
+    <RecordEditorModal
+      :open="editorOpen"
+      :title="editingRecord ? 'Edit experience' : 'Add experience'"
+      :fields="fields"
+      :initial-value="editingRecord || emptyRecord"
+      :saving="saving"
+      :error="editorError"
+      @save="saveExperience"
+      @cancel="closeEditor"
+    />
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
 import { experiencesAPI } from '@/services/api'
+import RecordEditorModal from '@/components/RecordEditorModal.vue'
 
 export default {
   name: 'ExperienceSection',
+  components: { RecordEditorModal },
   props: { currentUser: Object },
-  setup() {
+  setup(props) {
     const experiences = ref([])
     const loading = ref(false)
     const error = ref(null)
+    const editorOpen = ref(false)
+    const editingRecord = ref(null)
+    const saving = ref(false)
+    const editorError = ref('')
+    const emptyRecord = { company: '', description: '', url: '', imageUrl: '' }
+    const fields = [
+      { key: 'company', label: 'Company' },
+      { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'url', label: 'Link', type: 'url', required: false },
+      { key: 'imageUrl', label: 'Image URL', type: 'url', required: false }
+    ]
 
     const loadExperiences = async () => {
       loading.value = true
@@ -84,7 +110,7 @@ export default {
         const response = await experiencesAPI.getAll()
         experiences.value = response.data
       } catch (err) {
-        error.value = 'Failed to load experiences'
+        error.value = 'No experiences yet'
         console.error('Error loading experiences:', err)
       } finally {
         loading.value = false
@@ -92,19 +118,66 @@ export default {
     }
 
     const deleteExperience = async (id) => {
-      if (!confirm('Are you sure you want to delete this experience?')) return
+      if (!window.confirm('Warning: this will permanently delete this experience. Continue?')) return
       try {
         await experiencesAPI.delete(id)
-        experiences.value = experiences.value.filter(exp => exp.id !== id)
+        experiences.value = experiences.value.filter(exp => String(exp.id) !== String(id))
       } catch (err) {
         console.error('Failed to delete experience', err)
-        alert('Failed to delete experience')
+        window.alert(err.response?.data?.message || 'Failed to delete experience')
+      }
+    }
+
+    const canManage = (experience) => {
+      const userId = props.currentUser?.id ?? props.currentUser?.userId ?? props.currentUser?.user_id
+      const ownerId = experience.userId ?? experience.user_id ?? experience.ownerId
+      return userId != null && ownerId != null && String(userId) === String(ownerId)
+    }
+
+    const openCreate = () => {
+      editingRecord.value = null
+      editorError.value = ''
+      editorOpen.value = true
+    }
+
+    const openEdit = (experience) => {
+      editingRecord.value = { ...experience }
+      editorError.value = ''
+      editorOpen.value = true
+    }
+
+    const closeEditor = () => {
+      if (saving.value) return
+      editorOpen.value = false
+      editingRecord.value = null
+    }
+
+    const saveExperience = async (form) => {
+      saving.value = true
+      editorError.value = ''
+      try {
+        if (editingRecord.value) {
+          await experiencesAPI.update(editingRecord.value.id, form)
+        } else {
+          await experiencesAPI.create(form)
+        }
+        await loadExperiences()
+        editorOpen.value = false
+        editingRecord.value = null
+      } catch (err) {
+        editorError.value = err.response?.data?.message || 'Could not save experience. Check that the API is available.'
+      } finally {
+        saving.value = false
       }
     }
 
     onMounted(loadExperiences)
 
-    return { experiences, loading, error, deleteExperience }
+    return {
+      experiences, loading, error, deleteExperience, canManage,
+      editorOpen, editingRecord, saving, editorError, emptyRecord, fields,
+      openCreate, openEdit, closeEditor, saveExperience
+    }
   }
 }
 </script>
