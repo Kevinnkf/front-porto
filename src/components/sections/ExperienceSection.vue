@@ -30,7 +30,15 @@
       >
         <!-- Card Header -->
         <div class="flex items-start justify-between mb-3">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ experience.company }}</h3>
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ experience.company }}</h3>
+            <p v-if="experience.role" class="mt-1 text-sm font-medium text-gray-600 dark:text-gray-400">
+              {{ experience.role }}
+            </p>
+            <p v-if="experience.startDate || experience.endDate" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ experience.startDate || '—' }} – {{ experience.endDate || 'Present' }}
+            </p>
+          </div>
           <div class="flex items-center gap-2">
             <template v-if="canManage(experience)">
               <button
@@ -95,9 +103,14 @@ export default {
     const editingRecord = ref(null)
     const saving = ref(false)
     const editorError = ref('')
-    const emptyRecord = { company: '', description: '', url: '', imageUrl: '' }
+    const emptyRecord = {
+      company: '', role: '', startDate: '', endDate: '', description: '', url: '', imageUrl: ''
+    }
     const fields = [
       { key: 'company', label: 'Company' },
+      { key: 'role', label: 'Role' },
+      { key: 'startDate', label: 'Start date', type: 'date' },
+      { key: 'endDate', label: 'End date', type: 'date' },
       { key: 'description', label: 'Description', type: 'textarea' },
       { key: 'url', label: 'Link', type: 'url', required: false },
       { key: 'imageUrl', label: 'Image URL', type: 'url', required: false }
@@ -141,7 +154,11 @@ export default {
     }
 
     const openEdit = (experience) => {
-      editingRecord.value = { ...experience }
+      editingRecord.value = {
+        ...experience,
+        startDate: experience.startDate?.split('T')[0] || '',
+        endDate: experience.endDate?.split('T')[0] || ''
+      }
       editorError.value = ''
       editorOpen.value = true
     }
